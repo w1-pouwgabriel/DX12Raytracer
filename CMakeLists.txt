@@ -42,9 +42,6 @@ set(ALL_SRC_FILES ${MAIN_SRC_FILES} ${RENDERER_SRC_FILES} ${RENDERER_HEADER_FILE
 # Add the executable
 add_executable(Raytracer ${ALL_SRC_FILES})
 
-# Link directories
-link_directories(${LIB_DIR})
-
 # Link libraries
 target_link_libraries(Raytracer 
     ${LIB_DIR}/libglfw3.a

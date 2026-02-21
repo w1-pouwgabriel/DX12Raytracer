@@ -1,0 +1,18 @@
+{
+    "cmake.generator": "MinGW Makefiles",
+    "cmake.preferredGenerators": [
+        "MinGW Makefiles",
+        "Ninja",
+        "Unix Makefiles"
+    ],
+    "cmake.configureOnOpen": false,
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.enhancedColorization": "enabled",
+    "editor.semanticHighlighting.enabled": true,
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.default.enableConfigurationSquiggles": true,
+    "editor.bracketPairColorization.enabled": true,
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
+
+}
