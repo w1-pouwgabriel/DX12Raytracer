@@ -57,19 +57,20 @@ bool Device::Initialize(bool enableDebugLayer) {
 }
 
 void Device::EnableDebugLayer() {
-#ifdef _DEBUG
-    ComPtr<ID3D12Debug> debugController;
-    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
-        debugController->EnableDebugLayer();
-        std::cout << "Debug layer enabled" << std::endl;
+    #ifdef _DEBUG
+        ComPtr<ID3D12Debug> debugController;
+        if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
+            debugController->EnableDebugLayer();
+            std::cout << "Debug layer enabled" << std::endl;
 
-        // Enable additional debug layers
-        ComPtr<ID3D12Debug1> debugController1;
-        if (SUCCEEDED(debugController.As(&debugController1))) {
-            debugController1->SetEnableGPUBasedValidation(true);
-        }
-    }
-#endif
+            // Enable additional debug layers
+            ComPtr<ID3D12Debug1> debugController1;
+            if (SUCCEEDED(debugController.As(&debugController1))) {
+                debugController1->SetEnableGPUBasedValidation(true);
+            }
+        } 
+    #endif
+    return;
 }
 
 bool Device::CreateDXGIFactory() {

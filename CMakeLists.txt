@@ -12,49 +12,35 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Specify project directories
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
-set(RENDERER_DIR ${CMAKE_SOURCE_DIR}/src/DX12)
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
 # Include directories
+include_directories(${SRC_DIR})  # Changed from INCLUDE_DIR to SRC_DIR
 include_directories(${INCLUDE_DIR})
-include_directories(${RENDERER_DIR}/Public)  # Add public headers
 
-# Add GLFW include directory
-include_directories(${INCLUDE_DIR}/GLFW)
-
-# Gather source files from main src and Renderer
-file(GLOB MAIN_SRC_FILES ${SRC_DIR}/*.cpp)
-file(GLOB RENDERER_SRC_FILES 
-    ${RENDERER_DIR}/*.cpp
+# Gather ALL source files recursively (THIS IS THE FIX!)
+file(GLOB_RECURSE ALL_SRC_FILES 
+    ${SRC_DIR}/*.cpp
 )
 
-# Gather header files (so they appear in IDE)
-file(GLOB RENDERER_HEADER_FILES 
-    ${RENDERER_DIR}/*.h
+# Gather ALL header files recursively (for IDE)
+file(GLOB_RECURSE ALL_HEADER_FILES 
+    ${SRC_DIR}/*.h
 )
-
-# Combine all source files
-set(ALL_SRC_FILES ${MAIN_SRC_FILES} ${RENDERER_SRC_FILES} ${RENDERER_HEADER_FILES})
 
 # Add the executable
-add_executable(Raytracer ${ALL_SRC_FILES})
+add_executable(Raytracer ${ALL_SRC_FILES} ${ALL_HEADER_FILES})
 
 # Link libraries
 target_link_libraries(Raytracer 
-    ${LIB_DIR}/libglfw3.a
     d3d12
     dxgi
+    dxguid
     gdi32
     user32
     kernel32
 )
-
-# Set compiler explicitly (if needed)
-if(MINGW)
-    set(CMAKE_C_COMPILER gcc)
-    set(CMAKE_CXX_COMPILER g++)
-endif()
 
 # Copy all files from lib directory to the build directory
 add_custom_command(TARGET Raytracer POST_BUILD

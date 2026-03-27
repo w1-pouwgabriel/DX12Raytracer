@@ -34,7 +34,7 @@ bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enabl
         return false;
     }
 
-    // Create RTV descriptor heap
+    // Create RTV descriptor heap (Render Target View)
     if (!CreateRTVHeap()) {
         std::cerr << "Failed to create RTV descriptor heap" << std::endl;
         return false;
@@ -170,7 +170,7 @@ void Renderer::Render() {
     rtvHandle.ptr += backBufferIndex * m_rtvDescriptorSize;
     
     // Clear to RED (it's working!)
-    float clearColor[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+    float clearColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     
     // Transition back to present

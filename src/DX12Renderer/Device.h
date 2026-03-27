@@ -19,7 +19,7 @@ public:
     Device& operator=(const Device&) = delete;
 
     // Initialize the device
-    bool Initialize(bool enableDebugLayer = true);
+    bool Initialize(bool enableDebugLayer);
 
     // Check for raytracing support
     bool CheckRaytracingSupport();

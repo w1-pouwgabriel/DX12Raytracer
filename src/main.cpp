@@ -1,38 +1,20 @@
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
-
-#include "DX12/Renderer.h"
-#include <iostream>
-
-#define WindowWidth 720
-#define WindowHeight 480
+#include "App/Win32App.h"
+#include "DX12Renderer/Renderer.h"
 
 int main() {
-    // Initialize GLFW
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(WindowWidth, WindowHeight, "DX12 Raytracer", nullptr, nullptr);
-    HWND hwnd = glfwGetWin32Window(window);
-
-    // Create renderer (only class you interact with!)
+    Win32App app("DX12 Raytracer", 1280, 720);
     Renderer renderer;
-    if (!renderer.Initialize(hwnd, WindowWidth, WindowHeight, true)) {
+
+    if (!app.Create()) {
         return -1;
     }
 
-    // Main loop
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-        
-        // renderer.BeginFrame();
-        // renderer.EndFrame();
-        // renderer.Present();
+    renderer.Initialize(app.GetHWND(), 1280, 720, true);
+
+    while (app.ProcessMessages()) {
         renderer.Render();
     }
 
     renderer.WaitForGPU();
-    glfwDestroyWindow(window);
-    glfwTerminate();
     return 0;
 }
