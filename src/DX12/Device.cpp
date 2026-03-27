@@ -1,13 +1,13 @@
-#include "DX12Device.h"
+#include "Device.h"
 
-DX12Device::DX12Device()
+Device::Device()
     : m_fenceValue(0)
     , m_fenceEvent(nullptr)
     , m_raytracingTier(D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 {
 }
 
-DX12Device::~DX12Device() {
+Device::~Device() {
     WaitForGPU();
     
     if (m_fenceEvent) {
@@ -15,7 +15,7 @@ DX12Device::~DX12Device() {
     }
 }
 
-bool DX12Device::Initialize(bool enableDebugLayer) {
+bool Device::Initialize(bool enableDebugLayer) {
     if (enableDebugLayer) {
         EnableDebugLayer();
     }
@@ -56,7 +56,7 @@ bool DX12Device::Initialize(bool enableDebugLayer) {
     return true;
 }
 
-void DX12Device::EnableDebugLayer() {
+void Device::EnableDebugLayer() {
 #ifdef _DEBUG
     ComPtr<ID3D12Debug> debugController;
     if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
@@ -72,7 +72,7 @@ void DX12Device::EnableDebugLayer() {
 #endif
 }
 
-bool DX12Device::CreateDXGIFactory() {
+bool Device::CreateDXGIFactory() {
     UINT dxgiFactoryFlags = 0;
 
 #ifdef _DEBUG
@@ -82,7 +82,7 @@ bool DX12Device::CreateDXGIFactory() {
     return SUCCEEDED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&m_factory)));
 }
 
-bool DX12Device::SelectAdapter() {
+bool Device::SelectAdapter() {
     ComPtr<IDXGIAdapter1> adapter;
     SIZE_T maxDedicatedVideoMemory = 0;
 
@@ -114,7 +114,7 @@ bool DX12Device::SelectAdapter() {
     return m_adapter != nullptr;
 }
 
-bool DX12Device::CreateDevice() {
+bool Device::CreateDevice() {
     return SUCCEEDED(D3D12CreateDevice(
         m_adapter.Get(),
         D3D_FEATURE_LEVEL_11_0,
@@ -122,7 +122,7 @@ bool DX12Device::CreateDevice() {
     ));
 }
 
-bool DX12Device::CreateCommandQueue() {
+bool Device::CreateCommandQueue() {
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
     queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
@@ -132,7 +132,7 @@ bool DX12Device::CreateCommandQueue() {
     return SUCCEEDED(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)));
 }
 
-bool DX12Device::CreateSynchronizationObjects() {
+bool Device::CreateSynchronizationObjects() {
     if (FAILED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)))) {
         return false;
     }
@@ -143,7 +143,7 @@ bool DX12Device::CreateSynchronizationObjects() {
     return m_fenceEvent != nullptr;
 }
 
-bool DX12Device::CheckRaytracingSupport() {
+bool Device::CheckRaytracingSupport() {
     D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
     
     if (SUCCEEDED(m_device->CheckFeatureSupport(
@@ -158,7 +158,7 @@ bool DX12Device::CheckRaytracingSupport() {
     return false;
 }
 
-void DX12Device::WaitForGPU() {
+void Device::WaitForGPU() {
     const UINT64 fence = m_fenceValue;
     m_commandQueue->Signal(m_fence.Get(), fence);
     m_fenceValue++;
@@ -169,7 +169,7 @@ void DX12Device::WaitForGPU() {
     }
 }
 
-ComPtr<ID3D12CommandAllocator> DX12Device::CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE type) {
+ComPtr<ID3D12CommandAllocator> Device::CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE type) {
     ComPtr<ID3D12CommandAllocator> allocator;
     
     if (FAILED(m_device->CreateCommandAllocator(type, IID_PPV_ARGS(&allocator)))) {
@@ -179,7 +179,7 @@ ComPtr<ID3D12CommandAllocator> DX12Device::CreateCommandAllocator(D3D12_COMMAND_
     return allocator;
 }
 
-ComPtr<ID3D12GraphicsCommandList4> DX12Device::CreateCommandList(D3D12_COMMAND_LIST_TYPE type) {
+ComPtr<ID3D12GraphicsCommandList4> Device::CreateCommandList(D3D12_COMMAND_LIST_TYPE type) {
     auto allocator = CreateCommandAllocator(type);
     ComPtr<ID3D12GraphicsCommandList4> commandList;
 

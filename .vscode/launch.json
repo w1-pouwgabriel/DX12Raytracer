@@ -35,7 +35,7 @@
             "preLaunchTask": "build"
         },
         {
-            "name": "Clean and Debug",
+            "name": "Rebuild and Debug",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/Raytracer.exe",

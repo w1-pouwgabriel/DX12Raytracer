@@ -5,18 +5,18 @@
 #include <wrl/client.h>
 #include <stdexcept>
 #include <iostream>
-#include <vector>
 
-using Microsoft::WRL::ComPtr;
+template<typename T>
+using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-class DX12Device {
+class Device {
 public:
-    DX12Device();
-    ~DX12Device();
+    Device();
+    ~Device();
 
     // Disable copy
-    DX12Device(const DX12Device&) = delete;
-    DX12Device& operator=(const DX12Device&) = delete;
+    Device(const Device&) = delete;
+    Device& operator=(const Device&) = delete;
 
     // Initialize the device
     bool Initialize(bool enableDebugLayer = true);
@@ -29,11 +29,9 @@ public:
     ID3D12CommandQueue* GetCommandQueue() const { return m_commandQueue.Get(); }
     IDXGIFactory4* GetFactory() const { return m_factory.Get(); }
     IDXGIAdapter1* GetAdapter() const { return m_adapter.Get(); }
-
-    // Raytracing tier
     D3D12_RAYTRACING_TIER GetRaytracingTier() const { return m_raytracingTier; }
 
-    // Utility: Wait for GPU to finish
+    // Synchronization
     void WaitForGPU();
 
     // Utility: Create command allocator

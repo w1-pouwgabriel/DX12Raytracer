@@ -12,7 +12,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Specify project directories
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
-set(RENDERER_DIR ${CMAKE_SOURCE_DIR}/src/Renderer)
+set(RENDERER_DIR ${CMAKE_SOURCE_DIR}/src/DX12)
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
@@ -26,14 +26,12 @@ include_directories(${INCLUDE_DIR}/GLFW)
 # Gather source files from main src and Renderer
 file(GLOB MAIN_SRC_FILES ${SRC_DIR}/*.cpp)
 file(GLOB RENDERER_SRC_FILES 
-    ${RENDERER_DIR}/Private/*.cpp
-    ${RENDERER_DIR}/Public/*.cpp
+    ${RENDERER_DIR}/*.cpp
 )
 
 # Gather header files (so they appear in IDE)
 file(GLOB RENDERER_HEADER_FILES 
-    ${RENDERER_DIR}/Public/*.h
-    ${RENDERER_DIR}/Private/*.h
+    ${RENDERER_DIR}/*.h
 )
 
 # Combine all source files
