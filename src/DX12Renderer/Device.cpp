@@ -68,7 +68,7 @@ void Device::EnableDebugLayer() {
             if (SUCCEEDED(debugController.As(&debugController1))) {
                 debugController1->SetEnableGPUBasedValidation(true);
             }
-        } 
+        }
     #endif
     return;
 }
@@ -153,6 +153,9 @@ bool Device::CheckRaytracingSupport() {
         sizeof(options5)))) {
         
         m_raytracingTier = options5.RaytracingTier;
+        if (m_raytracingTier < D3D12_RAYTRACING_TIER_1_0)
+            throw std::runtime_error("Raytracing not supported on device");
+
         return m_raytracingTier >= D3D12_RAYTRACING_TIER_1_0;
     }
 

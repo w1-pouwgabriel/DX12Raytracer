@@ -34,7 +34,7 @@ bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enabl
         return false;
     }
 
-    // Create RTV descriptor heap (Render Target View)
+    // Create RTV descriptor heap
     if (!CreateRTVHeap()) {
         std::cerr << "Failed to create RTV descriptor heap" << std::endl;
         return false;
@@ -46,13 +46,13 @@ bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enabl
         return false;
     }
 
-    // Create allocator (just once)
+    // Create allocator
     m_device.GetDevice()->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(&m_commandAllocator)
     );
     
-    // Create command list (just once)
+    // Create command list
     m_device.GetDevice()->CreateCommandList(
         0,
         D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -61,7 +61,7 @@ bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enabl
         IID_PPV_ARGS(&m_commandList)
     );
     
-    m_commandList->Close();  // Start closed
+    m_commandList->Close();
 
     std::cout << "Renderer initialized successfully!" << std::endl;
     return true;
@@ -170,7 +170,7 @@ void Renderer::Render() {
     rtvHandle.ptr += backBufferIndex * m_rtvDescriptorSize;
     
     // Clear to RED (it's working!)
-    float clearColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+    float clearColor[] = { 1.0f, 0.0f, 0.0f, 1.0f };
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     
     // Transition back to present

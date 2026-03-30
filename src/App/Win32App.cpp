@@ -27,6 +27,7 @@ bool Win32App::Create() {
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = LPCTSTR("DX12RaytracerWindowClass");
+    wc.hIconSm = HICON();
 
     if (!RegisterClassEx(&wc)) {
         std::cerr << "Failed to register window class" << std::endl;
@@ -165,11 +166,10 @@ LRESULT Win32App::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
         case WM_KEYDOWN: {
             // ESC key closes window
             if (wparam == VK_ESCAPE) {
-
-                
                 PostQuitMessage(0);
                 return 0;
             }
+
             break;
         }
 
