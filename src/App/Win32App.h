@@ -16,11 +16,7 @@ public:
 
     // Create and show window
     bool Create();
-
-    // Main message loop - returns exit code
-    int Run();
-
-    // Process single frame worth of messages
+    int  Run();
     bool ProcessMessages();
 
     // Getters
@@ -35,6 +31,7 @@ public:
     std::function<void()> OnRender;        // Called each frame after update
     std::function<void()> OnDestroy;       // Called before window destruction
     std::function<void(uint32_t, uint32_t)> OnResize;  // Called when window resizes
+    std::function<void(WPARAM)>             OnKeyDown;
 
 private:
     // Window message handler

@@ -3,66 +3,36 @@
     "configurations": [
         {
             "name": "Debug Raytracer",
-            "type": "cppdbg",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Debug/Raytracer.exe",
+            "program": "${workspaceFolder}/build/Debug/Raytracer.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/Debug",
-            "environment": [],
-            "externalConsole": true,
-            "MIMode": "gdb",
-            "miDebuggerPath": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "build"
-        },
-        {
-            "name": "Run Raytracer (No Debug)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/Debug/Raytracer.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/Debug",
+            "cwd": "${workspaceFolder}/build/Debug",
             "environment": [],
             "externalConsole": true,
             "preLaunchTask": "build"
         },
         {
             "name": "Clean and Debug",
-            "type": "cppdbg",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Debug/Raytracer.exe",
+            "program": "${workspaceFolder}/build/Debug/Raytracer.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/Debug",
+            "cwd": "${workspaceFolder}/build/Debug",
             "environment": [],
             "externalConsole": true,
-            "MIMode": "gdb",
-            "miDebuggerPath": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
             "preLaunchTask": "rebuild"
         },
         {
             "name": "Run Only (No Build)",
-            "type": "cppdbg",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/Debug/Raytracer.exe",
+            "program": "${workspaceFolder}/build/Debug/Raytracer.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/Debug",
+            "cwd": "${workspaceFolder}/build/Debug",
             "environment": [],
             "externalConsole": true
         }

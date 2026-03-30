@@ -4,7 +4,6 @@
 Renderer::Renderer()
     : m_width(0)
     , m_height(0)
-    , m_frameIndex(0)
 {
 }
 
@@ -17,257 +16,161 @@ bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enabl
     m_width = width;
     m_height = height;
 
-    // Initialize device first
     if (!m_device.Initialize(enableDebugLayer)) {
-        std::cerr << "Failed to initialize DX12 device" << std::endl;
+        std::cerr << "[Renderer] Failed to initialize device\n";
         return false;
     }
 
-    // Check raytracing support
-    if (m_device.GetRaytracingTier() == D3D12_RAYTRACING_TIER_NOT_SUPPORTED) {
-        std::cerr << "WARNING: Raytracing not supported on this GPU!" << std::endl;
-    }
-
-    // Create swap chain
     if (!CreateSwapChain(hwnd, width, height)) {
-        std::cerr << "Failed to create swap chain" << std::endl;
+        std::cerr << "[Renderer] Failed to create swap chain\n";
         return false;
     }
 
-    // Create RTV descriptor heap
     if (!CreateRTVHeap()) {
-        std::cerr << "Failed to create RTV descriptor heap" << std::endl;
+        std::cerr << "[Renderer] Failed to create RTV heap\n";
         return false;
     }
 
-    // Create render targets
     if (!CreateRenderTargets()) {
-        std::cerr << "Failed to create render targets" << std::endl;
+        std::cerr << "[Renderer] Failed to create render targets\n";
         return false;
     }
 
-    // Create allocator
-    m_device.GetDevice()->CreateCommandAllocator(
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
-        IID_PPV_ARGS(&m_commandAllocator)
-    );
-    
-    // Create command list
-    m_device.GetDevice()->CreateCommandList(
-        0,
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
-        m_commandAllocator.Get(),
-        nullptr,
-        IID_PPV_ARGS(&m_commandList)
-    );
-    
+    if (FAILED(m_device.GetDevice()->CreateCommandAllocator(
+        D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)))) {
+        std::cerr << "[Renderer] Failed to create command allocator\n";
+        return false;
+    }
+
+    if (FAILED(m_device.GetDevice()->CreateCommandList(
+        0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+        m_commandAllocator.Get(), nullptr,
+        IID_PPV_ARGS(&m_commandList)))) {
+        std::cerr << "[Renderer] Failed to create command list\n";
+        return false;
+    }
     m_commandList->Close();
 
-    std::cout << "Renderer initialized successfully!" << std::endl;
-    return true;
-}
-
-bool Renderer::CreateSwapChain(HWND hwnd, uint32_t width, uint32_t height) {
-    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-    swapChainDesc.Width = width;
-    swapChainDesc.Height = height;
-    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    swapChainDesc.SampleDesc.Count = 1;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.BufferCount = BACK_BUFFER_COUNT;
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-
-    ComPtr<IDXGISwapChain1> swapChain1;
-    HRESULT hr = m_device.GetFactory()->CreateSwapChainForHwnd(
-        m_device.GetCommandQueue(),
-        hwnd,
-        &swapChainDesc,
-        nullptr,
-        nullptr,
-        &swapChain1
-    );
-
-    if (FAILED(hr)) {
+    if (!m_pipeline.Initialize(&m_device, width, height)) {
+        std::cerr << "[Renderer] Failed to initialize raytracing pipeline\n";
         return false;
     }
 
-    return SUCCEEDED(swapChain1.As(&m_swapChain));
-}
-
-bool Renderer::CreateRenderTargets() {
-    // Get the first descriptor handle
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-
-    // Create a RTV for each back buffer
-    for (uint32_t i = 0; i < BACK_BUFFER_COUNT; i++) {
-        // Get the back buffer resource
-        if (FAILED(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])))) {
-            return false;
-        }
-
-        // Create render target view for this buffer
-        m_device.GetDevice()->CreateRenderTargetView(
-            m_renderTargets[i].Get(),
-            nullptr,  // Use default RTV desc
-            rtvHandle
-        );
-
-        // Move to next descriptor
-        rtvHandle.ptr += m_rtvDescriptorSize;
-    }
-    return true;
-}
-
-void Renderer::CleanupRenderTargets() {
-    for (uint32_t i = 0; i < BACK_BUFFER_COUNT; i++) {
-        m_renderTargets[i].Reset();
-    }
-}
-
-bool Renderer::CreateRTVHeap() {
-    // Describe the RTV descriptor heap
-    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    rtvHeapDesc.NumDescriptors = BACK_BUFFER_COUNT;  // One for each back buffer
-    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    rtvHeapDesc.NodeMask = 0;
-
-    // Create the heap
-    HRESULT hr = m_device.GetDevice()->CreateDescriptorHeap(
-        &rtvHeapDesc,
-        IID_PPV_ARGS(&m_rtvHeap)
-    );
-
-    if (FAILED(hr)) {
-        return false;
-    }
-
-    // Get descriptor size (varies by GPU)
-    m_rtvDescriptorSize = m_device.GetDevice()->GetDescriptorHandleIncrementSize(
-        D3D12_DESCRIPTOR_HEAP_TYPE_RTV
-    );
-
+    std::cout << "[Renderer] Initialized\n";
     return true;
 }
 
 void Renderer::Render() {
     m_commandAllocator->Reset();
     m_commandList->Reset(m_commandAllocator.Get(), nullptr);
-    
-    // Get current back buffer
-    uint32_t backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
-    
-    // Transition to render target
-    D3D12_RESOURCE_BARRIER barrier = {};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Transition.pResource = m_renderTargets[backBufferIndex].Get();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    m_commandList->ResourceBarrier(1, &barrier);
-    
-    // Get RTV handle for current back buffer
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-    rtvHandle.ptr += backBufferIndex * m_rtvDescriptorSize;
-    
-    // Clear to RED (it's working!)
-    float clearColor[] = { 1.0f, 0.0f, 0.0f, 1.0f };
-    m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-    
-    // Transition back to present
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-    m_commandList->ResourceBarrier(1, &barrier);
-    
+
+    // 1. Shoot rays > UAV  (no-op until shaders are added, shows black)
+    m_pipeline.Dispatch(m_commandList.Get());
+
+    // 2. Blit UAV > back buffer
+    CopyUAVToBackBuffer(m_pipeline.GetOutputUAV());
+
+    // 3. Submit and flip
     m_commandList->Close();
-    
     ID3D12CommandList* lists[] = { m_commandList.Get() };
     m_device.GetCommandQueue()->ExecuteCommandLists(1, lists);
-    
+
     m_swapChain->Present(1, 0);
+
     m_device.WaitForGPU();
 }
 
-/*
-void Renderer::BeginFrame() {
-    // Get the current back buffer index for this frame
-    // Swap chain alternates between buffers (double/triple buffering)
-    m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
-    
-    // Reset command allocator and list here
-    // m_commandAllocator->Reset();
-    // m_commandList->Reset(m_commandAllocator.Get(), nullptr);
-    
-    // Set up frame-specific state:
-    // - Transition render targets to correct state
-    // - Set render targets
-    // - Set viewport and scissor rect
-    // - Clear render targets
-}
+void Renderer::CopyUAVToBackBuffer(ID3D12Resource* uavOutput) {
+    uint32_t bbIdx = m_swapChain->GetCurrentBackBufferIndex();
 
-void Renderer::EndFrame() {
-    // Close command list after recording all commands
-    // m_commandList->Close();
-    
-    // Execute command list on GPU
-    // ID3D12CommandList* lists[] = { m_commandList.Get() };
-    // m_device.GetCommandQueue()->ExecuteCommandLists(1, lists);
-    
-    // Signal fence for synchronization
-    // const uint64_t fenceValue = m_fenceValue;
-    // m_device.GetCommandQueue()->Signal(m_fence.Get(), fenceValue);
-    // m_fenceValue++;
-}
+    // UAV arrives in COPY_SOURCE (Dispatch always leaves it there).
+    // Only the back buffer needs transitioning.
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = m_renderTargets[bbIdx].Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+    m_commandList->ResourceBarrier(1, &barrier);
 
-void Renderer::Present() {
-    // Present the rendered frame to the screen
-    // Parameters: (SyncInterval, Flags)
-    // SyncInterval: 0 = no vsync, 1 = vsync (60fps), 2 = 30fps, etc.
-    // Flags: 0 = normal, DXGI_PRESENT_DO_NOT_WAIT, etc.
-    m_swapChain->Present(1, 0);
-    
-    // After present, swap chain automatically switches to next back buffer
-    // Next frame will use different buffer (double buffering)
+    m_commandList->CopyResource(m_renderTargets[bbIdx].Get(), uavOutput);
+
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    m_commandList->ResourceBarrier(1, &barrier);
 }
-*/
 
 void Renderer::WaitForGPU() {
     m_device.WaitForGPU();
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height) {
-    if (width == m_width && height == m_height) {
-        return;
-    }
+    if (width == m_width && height == m_height) return;
 
     m_width = width;
     m_height = height;
 
-    // Wait for GPU to finish
     WaitForGPU();
-
-    // Release old render targets
     CleanupRenderTargets();
 
-    // Resize swap chain buffers
-    HRESULT hr = m_swapChain->ResizeBuffers(
-        BACK_BUFFER_COUNT,
-        width,
-        height,
-        DXGI_FORMAT_R8G8B8A8_UNORM,
-        0
-    );
-
-    if (FAILED(hr)) {
-        std::cerr << "Failed to resize swap chain" << std::endl;
+    if (FAILED(m_swapChain->ResizeBuffers(
+        BACK_BUFFER_COUNT, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0))) {
+        std::cerr << "[Renderer] Failed to resize swap chain\n";
         return;
     }
 
-    // Recreate render targets
     CreateRenderTargets();
+    m_pipeline.Resize(width, height);
 
-    std::cout << "Resized to " << width << "x" << height << std::endl;
+    std::cout << "[Renderer] Resized to " << width << "x" << height << "\n";
 }
 
 uint32_t Renderer::GetCurrentBackBufferIndex() const {
     return m_swapChain->GetCurrentBackBufferIndex();
+}
+
+bool Renderer::CreateSwapChain(HWND hwnd, uint32_t width, uint32_t height) {
+    DXGI_SWAP_CHAIN_DESC1 desc = {};
+    desc.Width = width;
+    desc.Height = height;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    desc.BufferCount = BACK_BUFFER_COUNT;
+    desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
+    ComPtr<IDXGISwapChain1> sc1;
+    if (FAILED(m_device.GetFactory()->CreateSwapChainForHwnd(
+        m_device.GetCommandQueue(), hwnd, &desc, nullptr, nullptr, &sc1)))
+        return false;
+
+    return SUCCEEDED(sc1.As(&m_swapChain));
+}
+
+bool Renderer::CreateRTVHeap() {
+    D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+    desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    desc.NumDescriptors = BACK_BUFFER_COUNT;
+    desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+    if (FAILED(m_device.GetDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_rtvHeap))))
+        return false;
+
+    m_rtvDescriptorSize = m_device.GetDevice()->GetDescriptorHandleIncrementSize(
+        D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    return true;
+}
+
+bool Renderer::CreateRenderTargets() {
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    for (uint32_t i = 0; i < BACK_BUFFER_COUNT; i++) {
+        if (FAILED(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i]))))
+            return false;
+        m_device.GetDevice()->CreateRenderTargetView(m_renderTargets[i].Get(), nullptr, rtv);
+        rtv.ptr += m_rtvDescriptorSize;
+    }
+    return true;
+}
+
+void Renderer::CleanupRenderTargets() {
+    for (auto& rt : m_renderTargets) rt.Reset();
 }

@@ -5,13 +5,15 @@ int main() {
     Win32App app("DX12 Raytracer", 1280, 720);
     Renderer renderer;
 
-    if (!app.Create()) {
-        return -1;
-    }
+    if (!app.Create()) return -1;
+    if (!renderer.Initialize(app.GetHWND(), 1280, 720, true)) return -1;
 
-    renderer.Initialize(app.GetHWND(), 1280, 720, true);
+    app.OnKeyDown = [&](WPARAM key) {
+        if (key == 'R') renderer.GetPipeline().Reload("screenShader");
+     };
 
     while (app.ProcessMessages()) {
+
         renderer.Render();
     }
 

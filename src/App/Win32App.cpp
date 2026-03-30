@@ -1,4 +1,5 @@
 #include "Win32App.h"
+#include "../DX12Renderer/RaytracingPipeline.h"
 #include <iostream>
 
 Win32App::Win32App(const std::string& title, uint32_t width, uint32_t height)
@@ -141,6 +142,7 @@ LRESULT CALLBACK Win32App::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM
         app = reinterpret_cast<Win32App*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
     }
 
+
     if (app) {
         return app->HandleMessage(msg, wparam, lparam);
     }
@@ -169,6 +171,9 @@ LRESULT Win32App::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
                 PostQuitMessage(0);
                 return 0;
             }
+            if (wparam == VK_ESCAPE) { PostQuitMessage(0); return 0; }
+            if (OnKeyDown) OnKeyDown(wparam);
+            break;
 
             break;
         }
