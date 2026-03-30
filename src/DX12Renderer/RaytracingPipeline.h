@@ -15,7 +15,7 @@ public:
     // Renderer needs this to blit to the back buffer
     ID3D12Resource* GetOutputUAV() const { return m_outputUAV.Get(); }
 
-    void Reload(std::string FileName); // recompiles shader and rebuilds RTPSO + SBT
+    void Reload(const std::string& shaderPath = "assets/shaders/landelare.hlsl"); // recompiles shader and rebuilds RTPSO + SBT
 
 private:
     bool CreateOutputUAV(); 

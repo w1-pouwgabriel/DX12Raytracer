@@ -30,7 +30,7 @@ bool RaytracingPipeline::Initialize(Device* device, uint32_t width, uint32_t hei
     }
     std::string hlsl(std::istreambuf_iterator<char>(file), {});
 
-    // lib_6_3 = raytracing library target (no single entry point — exports all shaders)
+    // lib_6_3 = raytracing library target (no single entry point  exports all shaders)
     auto blob = compiler.Compile(hlsl, L"lib_6_3");
 
     // -- Build pipeline --------------------------------------------------------
@@ -70,7 +70,7 @@ void RaytracingPipeline::Dispatch(ID3D12GraphicsCommandList4* cmdList) {
     ID3D12DescriptorHeap* heaps[] = { m_uavHeap.Get() };
     cmdList->SetDescriptorHeaps(1, heaps);
     cmdList->SetComputeRootDescriptorTable(
-        0,  // root parameter index — matches CreateRootSignature()
+        0,  // root parameter index  matches CreateRootSignature()
         m_uavHeap->GetGPUDescriptorHandleForHeapStart()
     );
 
@@ -85,7 +85,7 @@ void RaytracingPipeline::Dispatch(ID3D12GraphicsCommandList4* cmdList) {
     desc.Height = m_height;
     desc.Depth = 1;
 
-    // One RayGen record (no stride field — there is always exactly one)
+    // One RayGen record (no stride field  there is always exactly one)
     desc.RayGenerationShaderRecord.StartAddress =
         m_sbtBuffer->GetGPUVirtualAddress() + m_rayGenOffset;
     desc.RayGenerationShaderRecord.SizeInBytes = idSize;
@@ -96,7 +96,7 @@ void RaytracingPipeline::Dispatch(ID3D12GraphicsCommandList4* cmdList) {
     desc.MissShaderTable.SizeInBytes = idSize;
     desc.MissShaderTable.StrideInBytes = idSize;
 
-    // No hit group yet — no geometry
+    // No hit group yet no geometry
     desc.HitGroupTable = {};
 
     cmdList->DispatchRays(&desc);
@@ -117,14 +117,22 @@ void RaytracingPipeline::Resize(uint32_t width, uint32_t height) {
 }
 
 
-void RaytracingPipeline::Reload(std::string FileName)
+void RaytracingPipeline::Reload(const std::string& FileName)
 {
-    std::cout << "[RaytracingPipeline] Reloading shaders...\n";
+    std::cout << "[RaytracingPipeline] Reloading: " << FileName << "\n";
+    std::ifstream file(FileName);
+
+    if (!file.is_open()) {
+        std::cerr << "[RaytracingPipeline] Cannot open: " << FileName << "\n";
+        std::cerr << "[RaytracingPipeline] Working directory: "
+                << std::filesystem::current_path() << "\n";
+        return;
+    }
 
     // wait for GPU to finish using the current pipeline before we replace it
     m_device->WaitForGPU();
 
-    // drop old pipeline objects — UAV stays, we only rebuilt the shader side
+    // drop old pipeline objects UAV stays, we only rebuilt the shader side
     m_rtpso.Reset();
     m_rtpsoProps.Reset();
     m_globalRootSig.Reset();
@@ -153,7 +161,7 @@ void RaytracingPipeline::Reload(std::string FileName)
         }
     }
     catch (const std::exception& e) {
-        // shader has a compile error — print it and keep the old pipeline running
+        // shader has a compile error, print it and keep the old pipeline running
         std::cerr << "[RaytracingPipeline] Shader error: " << e.what() << "\n";
         return;
     }
@@ -260,7 +268,7 @@ bool RaytracingPipeline::CreateRTPSO(const void* shaderCode, size_t shaderCodeSi
     shaderConfig.MaxPayloadSizeInBytes = sizeof(float) * 4; // float4 color
     shaderConfig.MaxAttributeSizeInBytes = sizeof(float) * 2; // float2 barycentrics
 
-    // No secondary rays in gradient mode — recursion depth 1 is the minimum
+    // No secondary rays in gradient mode  recursion depth 1 is the minimum
     D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig = {};
     pipelineConfig.MaxTraceRecursionDepth = 1;
 
@@ -323,7 +331,7 @@ bool RaytracingPipeline::CreateSBT() {
     void* missId = m_rtpsoProps->GetShaderIdentifier(L"Miss");
 
     if (!rayGenId || !missId) {
-        std::cerr << "[RaytracingPipeline] Shader identifier not found — "
+        std::cerr << "[RaytracingPipeline] Shader identifier not found  "
             "entry point names must match screenShader.hlsl exactly\n";
         return false;
     }
