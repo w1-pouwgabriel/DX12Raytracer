@@ -2,8 +2,10 @@
 
 #include "Device.h"
 #include "RaytracingPipeline.h"
+#include "AccelerationStructure.h"
 #include <dxgi1_6.h>
 #include <cstdint>
+#include <vector>
 
 class Renderer {
 public:
@@ -19,16 +21,14 @@ public:
     void WaitForGPU();
     void Resize(uint32_t width, uint32_t height);
 
-    RaytracingPipeline GetPipeline() { return m_pipeline; }
+    // Return by reference — returning by value would copy a non-copyable type
+    RaytracingPipeline& GetPipeline() { return m_pipeline; }
 
-    // Device access
     Device& GetDevice() { return m_device; }
     ID3D12Device5* GetD3D12Device()    const { return m_device.GetDevice(); }
     ID3D12CommandQueue* GetCommandQueue()   const { return m_device.GetCommandQueue(); }
-
-    // Swap chain access
-    IDXGISwapChain3* GetSwapChain()             const { return m_swapChain.Get(); }
-    uint32_t         GetCurrentBackBufferIndex() const;
+    IDXGISwapChain3* GetSwapChain()      const { return m_swapChain.Get(); }
+    uint32_t            GetCurrentBackBufferIndex() const;
 
 private:
     bool CreateSwapChain(HWND hwnd, uint32_t width, uint32_t height);
@@ -37,22 +37,32 @@ private:
     void CleanupRenderTargets();
     void CopyUAVToBackBuffer(ID3D12Resource* uavOutput);
 
-    // Core infrastructure
+    // Builds all BLASes + TLAS and calls m_pipeline.SetTLAS()
+    // Called once from Initialize(), after the pipeline is ready
+    bool BuildScene();
+
+    // -- Core infrastructure ---------------------------------------------------
     Device                              m_device;
     ComPtr<ID3D12CommandAllocator>      m_commandAllocator;
     ComPtr<ID3D12GraphicsCommandList4>  m_commandList;
 
-    // Presentation
+    // -- Presentation ----------------------------------------------------------
     ComPtr<IDXGISwapChain3>      m_swapChain;
     ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
     uint32_t                     m_rtvDescriptorSize = 0;
     static const uint32_t        BACK_BUFFER_COUNT = 2;
     ComPtr<ID3D12Resource>       m_renderTargets[BACK_BUFFER_COUNT];
 
-    // Raytracing
+    // -- Raytracing ------------------------------------------------------------
     RaytracingPipeline m_pipeline;
 
-    // State
+    // -- Scene — owned here, never in RaytracingPipeline ----------------------
+    BLAS                    m_cubeBLAS;
+    BLAS                    m_mirrorBLAS;
+    BLAS                    m_floorBLAS;
+    ComPtr<ID3D12Resource>  m_tlas;         // keep alive — GPU reads it every frame
+
+    // -- State -----------------------------------------------------------------
     uint32_t m_width = 0;
     uint32_t m_height = 0;
 };

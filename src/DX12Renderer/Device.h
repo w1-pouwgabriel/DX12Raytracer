@@ -63,3 +63,4 @@ private:
     bool CreateSynchronizationObjects();
     void EnableDebugLayer();
 };
+

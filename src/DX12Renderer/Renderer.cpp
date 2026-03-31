@@ -56,6 +56,12 @@ bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enabl
         return false;
     }
 
+    // Build geometry AFTER pipeline so the command list is ready
+    if (!BuildScene()) {
+        std::cerr << "[Renderer] Failed to build scene\n";
+        return false;
+    }
+
     std::cout << "[Renderer] Initialized\n";
     return true;
 }
@@ -97,6 +103,44 @@ void Renderer::CopyUAVToBackBuffer(ID3D12Resource* uavOutput) {
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     m_commandList->ResourceBarrier(1, &barrier);
+}
+
+bool Renderer::BuildScene()
+{
+    // Reuse the existing command allocator/list
+    m_commandAllocator->Reset();
+    m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+
+    static const std::vector<float> cubeVerts = {
+        -0.5f,-0.5f,-0.5f,  0.5f,-0.5f,-0.5f,  0.5f, 0.5f,-0.5f, -0.5f, 0.5f,-0.5f,
+        -0.5f,-0.5f, 0.5f,  0.5f,-0.5f, 0.5f,  0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
+    };
+    static const std::vector<uint32_t> cubeIdx = {
+        0,1,2, 0,2,3,  5,4,7, 5,7,6,
+        4,0,3, 4,3,7,  1,5,6, 1,6,2,
+        4,5,1, 4,1,0,  3,2,6, 3,6,7,
+    };
+    static const std::vector<float>    quadVerts = { -1,0,-1, 1,0,-1, 1,0,1, -1,0,1 };
+    static const std::vector<uint32_t> quadIdx = { 0,1,2, 0,2,3 };
+
+    m_cubeBLAS = AccelerationStructure::BuildBLAS(&m_device, m_commandList.Get(), cubeVerts, cubeIdx);
+    m_mirrorBLAS = AccelerationStructure::BuildBLAS(&m_device, m_commandList.Get(), quadVerts, quadIdx);
+    m_floorBLAS = AccelerationStructure::BuildBLAS(&m_device, m_commandList.Get(), quadVerts, quadIdx);
+
+    std::vector<TLASInstance> instances = {
+        { &m_cubeBLAS,   AccelerationStructure::Translation(0, 1, 0), 0 },
+        { &m_mirrorBLAS, AccelerationStructure::Translation(0, 3, 2), 1 },
+        { &m_floorBLAS,  AccelerationStructure::Scale(20),            2 },
+    };
+    m_tlas = AccelerationStructure::BuildTLAS(&m_device, m_commandList.Get(), instances);
+
+    m_commandList->Close();
+    ID3D12CommandList* lists[] = { m_commandList.Get() };
+    m_device.GetCommandQueue()->ExecuteCommandLists(1, lists);
+    m_device.WaitForGPU(); // scratch buffers safe to free after this
+
+    m_pipeline.SetTLAS(m_tlas->GetGPUVirtualAddress());
+    return true;
 }
 
 void Renderer::WaitForGPU() {

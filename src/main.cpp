@@ -9,13 +9,12 @@ int main() {
     if (!app.Create()) return -1;
     if (!renderer.Initialize(app.GetHWND(), 1280, 720, true)) return -1;
 
-    ShaderInputWindow shaderInput;
-
     // Open the tool window next to the main window,
     // pre-filled with the default shader path
+    ShaderInputWindow shaderInput;
     shaderInput.Create(app.GetHWND(), "assets/shaders/screenShader.hlsl");
 
-    // R key: reload using whatever filename is in the text box
+    // Key handeling for now, kinda messy
     app.OnKeyDown = [&](WPARAM key) {
         if (key == 'R') {
             std::string path = shaderInput.GetShaderPath();

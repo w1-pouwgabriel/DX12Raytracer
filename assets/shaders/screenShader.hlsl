@@ -1,4 +1,4 @@
-RWTexture2D<float4> gOutput : register(u0);
+﻿RWTexture2D<float4> gOutput : register(u0);
 
 struct Payload
 {

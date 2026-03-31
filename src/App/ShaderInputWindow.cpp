@@ -59,7 +59,7 @@ std::string ShaderInputWindow::GetShaderPath() const {
     return buf;
 }
 
-// Static — just routes the message to the instance
+// Static func just routes the message to the windows instance
 LRESULT CALLBACK ShaderInputWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     ShaderInputWindow* self = nullptr;
 
