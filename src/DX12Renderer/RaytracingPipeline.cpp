@@ -28,7 +28,7 @@ bool RaytracingPipeline::Initialize(Device* device, uint32_t width, uint32_t hei
     ShaderCompiler compiler;
     if (!compiler.Initialize()) return false;
 
-    std::string resolved = ResolveShaderPath("assets/shaders/landelare.hlsl");
+    std::string resolved = ResolveShaderPath("assets/shaders/screenShader.hlsl");
     std::ifstream file(resolved);
     if (!file.is_open()) {
         std::cerr << "[RaytracingPipeline] Cannot open: " << resolved << "\n"
@@ -56,10 +56,6 @@ bool RaytracingPipeline::Initialize(Device* device, uint32_t width, uint32_t hei
     HitGroupExport "raygeneration" imports ClosestHitShaderImport named "closesthit" but there are no exports matching that name. [ STATE_CREATION ERROR #1194: CREATE_STATE_OBJECT_ERROR]
     
     */
-
-
-
-
 
     if (!CreateSBT()) {
         std::cerr << "[RaytracingPipeline] Failed to create SBT\n";
@@ -245,13 +241,12 @@ bool RaytracingPipeline::CreateRootSignature() {
 bool RaytracingPipeline::CreateRTPSO(const void* shaderCode, size_t shaderSize) {
     // Export all three shader entry points from the DXIL library.
     // Names must exactly match the [shader("...")] functions in the HLSL.
-
-
     D3D12_EXPORT_DESC exports[3] = {
-        { L"RayGeneration", nullptr, D3D12_EXPORT_FLAG_NONE },
-        { L"Miss",          nullptr, D3D12_EXPORT_FLAG_NONE },
-        { L"ClosestHit",    nullptr, D3D12_EXPORT_FLAG_NONE },
+        { L"RayGen", nullptr, D3D12_EXPORT_FLAG_NONE },
+        { L"Miss", nullptr, D3D12_EXPORT_FLAG_NONE },
+        { L"ClosestHit", nullptr, D3D12_EXPORT_FLAG_NONE },
     };
+
     D3D12_DXIL_LIBRARY_DESC libDesc = {};
     libDesc.DXILLibrary.pShaderBytecode = shaderCode;
     libDesc.DXILLibrary.BytecodeLength = shaderSize;
@@ -323,7 +318,7 @@ bool RaytracingPipeline::CreateSBT() {
         IID_PPV_ARGS(&m_sbtBuffer)))) return false;
 
     // Names must match HLSL entry points / hit group export name exactly
-    void* rayGenId = m_rtpsoProps->GetShaderIdentifier(L"RayGeneration");
+    void* rayGenId = m_rtpsoProps->GetShaderIdentifier(L"RayGen");
     void* missId = m_rtpsoProps->GetShaderIdentifier(L"Miss");
     void* hitGroupId = m_rtpsoProps->GetShaderIdentifier(L"HitGroup");
 

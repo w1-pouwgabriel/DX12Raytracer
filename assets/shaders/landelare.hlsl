@@ -18,9 +18,14 @@ static const float3 skyBottom = float3(0.75, 0.86, 0.93);
 [shader("raygeneration")]
 void RayGeneration()
 {
+    
     uint2 idx = DispatchRaysIndex().xy;
     float2 size = DispatchRaysDimensions().xy;
     float2 uv = idx / size;
+
+// FORCE BRIGHT RED - ignore everything else
+    output[idx] = float4(1, 0, 0, 1);  // Add this at the TOP
+    return;  // Skip rest of shader
 
     float3 target = float3(
         (uv.x * 2 - 1) * 1.8 * (size.x / size.y),

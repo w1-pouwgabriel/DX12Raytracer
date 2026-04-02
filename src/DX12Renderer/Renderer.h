@@ -53,16 +53,19 @@ private:
     static const uint32_t        BACK_BUFFER_COUNT = 2;
     ComPtr<ID3D12Resource>       m_renderTargets[BACK_BUFFER_COUNT];
 
-    // -- Raytracing ------------------------------------------------------------
+
     RaytracingPipeline m_pipeline;
 
-    // -- Scene — owned here, never in RaytracingPipeline ----------------------
+    // Scene — owned here, never in RaytracingPipeline --------------------------
     BLAS                    m_cubeBLAS;
     BLAS                    m_mirrorBLAS;
     BLAS                    m_floorBLAS;
-    ComPtr<ID3D12Resource>  m_tlas;         // keep alive — GPU reads it every frame
+    ComPtr<ID3D12Resource>  m_tlas;         // keep alive - GPU reads it every frame
+    // keep TLAS build buffers alive
+    ComPtr<ID3D12Resource> m_tlasScratch;
+    ComPtr<ID3D12Resource> m_tlasInstanceBuffer;
 
-    // -- State -----------------------------------------------------------------
+    // State 
     uint32_t m_width = 0;
     uint32_t m_height = 0;
 };

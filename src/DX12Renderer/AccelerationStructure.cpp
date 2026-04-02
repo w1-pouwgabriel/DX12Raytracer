@@ -1,6 +1,7 @@
 #include "AccelerationStructure.h"
 #include <stdexcept>
 #include <iostream>
+#include <cstring>
 
 using namespace DirectX;
 
@@ -43,42 +44,49 @@ BLAS AccelerationStructure::BuildBLAS(
     const std::vector<float>& vertices,
     const std::vector<uint32_t>& indices)
 {
-    // -- 1. Upload vertex and index data to GPU -----------------------------
-    // Vertices are float3 (3 floats × 4 bytes = 12 bytes per vertex)
+    BLAS blas;
+
+    // -- 1. Upload vertex data (STORE IN BLAS!) -----------------------------
     uint64_t vbSize = vertices.size() * sizeof(float);
+
+    blas.vertexBuffer = CreateBuffer(device, vbSize,
+        D3D12_RESOURCE_FLAG_NONE,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        D3D12_HEAP_TYPE_UPLOAD);
+
+    void* pVertexData = nullptr;
+    blas.vertexBuffer->Map(0, nullptr, &pVertexData);
+    memcpy(pVertexData, vertices.data(), vbSize);
+    blas.vertexBuffer->Unmap(0, nullptr);
+
+    // -- 2. Upload index data (STORE IN BLAS!) ------------------------------
     uint64_t ibSize = indices.size() * sizeof(uint32_t);
 
-    auto vbUpload = CreateBuffer(device, vbSize, D3D12_RESOURCE_FLAG_NONE,
+    blas.indexBuffer = CreateBuffer(device, ibSize,
+        D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         D3D12_HEAP_TYPE_UPLOAD);
-    auto ibUpload = CreateBuffer(device, ibSize, D3D12_RESOURCE_FLAG_NONE,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        D3D12_HEAP_TYPE_UPLOAD);
 
-    void* pData = nullptr;
-    vbUpload->Map(0, nullptr, &pData);
-    memcpy(pData, vertices.data(), vbSize);
-    vbUpload->Unmap(0, nullptr);
+    void* pIndexData = nullptr;
+    blas.indexBuffer->Map(0, nullptr, &pIndexData);
+    memcpy(pIndexData, indices.data(), ibSize);
+    blas.indexBuffer->Unmap(0, nullptr);
 
-    ibUpload->Map(0, nullptr, &pData);
-    memcpy(pData, indices.data(), ibSize);
-    ibUpload->Unmap(0, nullptr);
-
-    // -- 2. Describe the geometry -------------------------------------------
+    // -- 3. Describe the geometry -------------------------------------------
     D3D12_RAYTRACING_GEOMETRY_DESC geoDesc = {};
     geoDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-    geoDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE; // disables any-hit shader
+    geoDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
-    geoDesc.Triangles.VertexBuffer.StartAddress = vbUpload->GetGPUVirtualAddress();
-    geoDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(float) * 3; // float3
+    geoDesc.Triangles.VertexBuffer.StartAddress = blas.vertexBuffer->GetGPUVirtualAddress();
+    geoDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(float) * 3;  // float3 per vertex
     geoDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-    geoDesc.Triangles.VertexCount = static_cast<uint32_t>(vertices.size() / 3);
+    geoDesc.Triangles.VertexCount = static_cast<UINT>(vertices.size() / 3);
 
-    geoDesc.Triangles.IndexBuffer = ibUpload->GetGPUVirtualAddress();
+    geoDesc.Triangles.IndexBuffer = blas.indexBuffer->GetGPUVirtualAddress();
     geoDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
-    geoDesc.Triangles.IndexCount = static_cast<uint32_t>(indices.size());
+    geoDesc.Triangles.IndexCount = static_cast<UINT>(indices.size());
 
-    // -- 3. Query how much scratch + result memory the driver needs ---------
+    // -- 4. Query memory requirements ---------------------------------------
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
     inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
     inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
@@ -89,42 +97,41 @@ BLAS AccelerationStructure::BuildBLAS(
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild = {};
     device->GetDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
 
-    // -- 4. Allocate scratch (temporary) and result (permanent) buffers -----
-    // Scratch is only needed during the build — can be freed afterwards.
-    // Result must stay alive as long as the BLAS is used.
-    auto scratch = CreateBuffer(device,
+    // -- 5. Create scratch buffer (STORE IN BLAS!) --------------------------
+    blas.scratchBuffer = CreateBuffer(device,
         prebuild.ScratchDataSizeInBytes,
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         D3D12_RESOURCE_STATE_COMMON);
 
-    auto result = CreateBuffer(device,
-        prebuild.ResultDataMaxSizeInBytes,
-        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+    // -- 6. Create result buffer (already stored in blas.buffer) ------------
+    if (!blas.buffer) {
+        blas.buffer = CreateBuffer(device,
+            prebuild.ResultDataMaxSizeInBytes,
+            D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+            D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+    }
 
-    // -- 5. Record the build command ----------------------------------------
+    // -- 7. Build the BLAS --------------------------------------------------
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
-    buildDesc.DestAccelerationStructureData = result->GetGPUVirtualAddress();
-    buildDesc.ScratchAccelerationStructureData = scratch->GetGPUVirtualAddress();
+    buildDesc.DestAccelerationStructureData = blas.buffer->GetGPUVirtualAddress();
+    buildDesc.ScratchAccelerationStructureData = blas.scratchBuffer->GetGPUVirtualAddress();
     buildDesc.Inputs = inputs;
 
     cmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
-    // UAV barrier — ensures the BLAS build finishes before the TLAS reads it
+    // -- 8. UAV barrier - ensure build completes ----------------------------
     D3D12_RESOURCE_BARRIER barrier = {};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    barrier.UAV.pResource = result.Get();
+    barrier.UAV.pResource = blas.buffer.Get();
     cmdList->ResourceBarrier(1, &barrier);
 
-    std::cout << "[BLAS] Built — "
+    std::cout << "[BLAS] Built - "
         << (indices.size() / 3) << " triangles, "
-        << prebuild.ResultDataMaxSizeInBytes / 1024 << " KB\n";
+        << (prebuild.ResultDataMaxSizeInBytes / 1024) << " KB\n";
 
-    BLAS blas;
-    blas.buffer = result;
+    // All buffers (vertex, index, scratch, result) stored in BLAS
+    // They stay alive as long as the BLAS exists
     return blas;
-    // Note: scratch and upload buffers go out of scope here.
-    // They're still alive on the GPU until WaitForGPU() is called — that's fine.
 }
 
 // -- TLAS ----------------------------------------------------------------------
@@ -132,11 +139,11 @@ BLAS AccelerationStructure::BuildBLAS(
 ComPtr<ID3D12Resource> AccelerationStructure::BuildTLAS(
     Device* device,
     ID3D12GraphicsCommandList4* cmdList,
-    const std::vector<TLASInstance>& instances)
+    const std::vector<TLASInstance>& instances,
+    ComPtr<ID3D12Resource>& outScratch,
+    ComPtr<ID3D12Resource>& outInstanceBuffer)
 {
-    // -- 1. Fill one D3D12_RAYTRACING_INSTANCE_DESC per instance -----------
-    // This struct tells the GPU which BLAS to use, what transform to apply,
-    // and what InstanceID() / InstanceMask to return in the shader.
+    // -- 1. Create instance descriptors -------------------------------------
     std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDescs(instances.size());
 
     for (size_t i = 0; i < instances.size(); i++) {
@@ -144,67 +151,70 @@ ComPtr<ID3D12Resource> AccelerationStructure::BuildTLAS(
         auto& dst = instanceDescs[i];
 
         memset(&dst, 0, sizeof(dst));
-
-        // Copy the 3x4 row-major transform (DX12 expects row-major)
         memcpy(dst.Transform, &src.transform, sizeof(dst.Transform));
 
         dst.InstanceID = src.instanceID;
-        dst.InstanceMask = 0xFF; // visible to all ray masks
-        dst.InstanceContributionToHitGroupIndex = src.instanceID; // maps to SBT slot
+        dst.InstanceMask = 0xFF;
+        dst.InstanceContributionToHitGroupIndex = src.instanceID;
         dst.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
         dst.AccelerationStructure = src.blas->gpuVA();
     }
 
-    // -- 2. Upload instance descs to an upload buffer -----------------------
+    // -- 2. Upload instance buffer (CREATE ONCE, USE IT!) -------------------
     uint64_t instBufSize = instances.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
-    auto instanceBuf = CreateBuffer(device, instBufSize,
+
+    outInstanceBuffer = CreateBuffer(device, instBufSize,
         D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_GENERIC_READ,
         D3D12_HEAP_TYPE_UPLOAD);
 
     void* pData = nullptr;
-    instanceBuf->Map(0, nullptr, &pData);
+    outInstanceBuffer->Map(0, nullptr, &pData);
     memcpy(pData, instanceDescs.data(), instBufSize);
-    instanceBuf->Unmap(0, nullptr);
+    outInstanceBuffer->Unmap(0, nullptr);
 
-    // -- 3. Query memory requirements --------------------------------------
+    // -- 3. Query memory requirements ---------------------------------------
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
     inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
     inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-    inputs.NumDescs = static_cast<uint32_t>(instances.size());
+    inputs.NumDescs = static_cast<UINT>(instances.size());
     inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-    inputs.InstanceDescs = instanceBuf->GetGPUVirtualAddress();
+    inputs.InstanceDescs = outInstanceBuffer->GetGPUVirtualAddress();
 
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild = {};
     device->GetDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
 
-    // -- 4. Allocate buffers and build --------------------------------------
-    auto scratch = CreateBuffer(device,
+    // -- 4. Create scratch buffer (STORE IT!) -------------------------------
+    outScratch = CreateBuffer(device,
         prebuild.ScratchDataSizeInBytes,
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         D3D12_RESOURCE_STATE_COMMON);
 
+    // -- 5. Create result buffer --------------------------------------------
     auto result = CreateBuffer(device,
         prebuild.ResultDataMaxSizeInBytes,
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 
+    // -- 6. Build the TLAS --------------------------------------------------
     D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
     buildDesc.DestAccelerationStructureData = result->GetGPUVirtualAddress();
-    buildDesc.ScratchAccelerationStructureData = scratch->GetGPUVirtualAddress();
+    buildDesc.ScratchAccelerationStructureData = outScratch->GetGPUVirtualAddress();
     buildDesc.Inputs = inputs;
 
     cmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
+    // -- 7. UAV barrier -----------------------------------------------------
     D3D12_RESOURCE_BARRIER barrier = {};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
     barrier.UAV.pResource = result.Get();
     cmdList->ResourceBarrier(1, &barrier);
 
-    std::cout << "[TLAS] Built — "
+    std::cout << "[TLAS] Built - "
         << instances.size() << " instances, "
-        << prebuild.ResultDataMaxSizeInBytes / 1024 << " KB\n";
+        << (prebuild.ResultDataMaxSizeInBytes / 1024) << " KB\n";
 
+    // All buffers now stored in out parameters, stay alive in caller
     return result;
 }
 

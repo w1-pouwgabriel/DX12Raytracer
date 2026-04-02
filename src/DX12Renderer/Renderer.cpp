@@ -87,22 +87,26 @@ void Renderer::Render() {
 }
 
 void Renderer::CopyUAVToBackBuffer(ID3D12Resource* uavOutput) {
-    uint32_t bbIdx = m_swapChain->GetCurrentBackBufferIndex();
-
-    // UAV arrives in COPY_SOURCE (Dispatch always leaves it there).
-    // Only the back buffer needs transitioning.
-    D3D12_RESOURCE_BARRIER barrier = {};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Transition.pResource = m_renderTargets[bbIdx].Get();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-    m_commandList->ResourceBarrier(1, &barrier);
-
-    m_commandList->CopyResource(m_renderTargets[bbIdx].Get(), uavOutput);
-
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-    m_commandList->ResourceBarrier(1, &barrier);
+    uint32_t backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+    
+    // Transition back buffer: PRESENT → COPY_DEST
+    D3D12_RESOURCE_BARRIER barriers[2] = {};
+    barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barriers[0].Transition.pResource = m_renderTargets[backBufferIndex].Get();
+    barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+    barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    
+    // UAV is already in COPY_SOURCE state (from Dispatch)
+    m_commandList->ResourceBarrier(1, &barriers[0]);
+    
+    // Copy UAV to back buffer
+    m_commandList->CopyResource(m_renderTargets[backBufferIndex].Get(), uavOutput);
+    
+    // Transition back buffer: COPY_DEST to PRESENT
+    barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    m_commandList->ResourceBarrier(1, &barriers[0]);
 }
 
 bool Renderer::BuildScene()
@@ -132,7 +136,7 @@ bool Renderer::BuildScene()
         { &m_mirrorBLAS, AccelerationStructure::Translation(0, 3, 2), 1 },
         { &m_floorBLAS,  AccelerationStructure::Scale(20),            2 },
     };
-    m_tlas = AccelerationStructure::BuildTLAS(&m_device, m_commandList.Get(), instances);
+    m_tlas = AccelerationStructure::BuildTLAS(&m_device, m_commandList.Get(), instances, m_tlasScratch, m_tlasInstanceBuffer);  // Pass out buffers
 
     m_commandList->Close();
     ID3D12CommandList* lists[] = { m_commandList.Get() };

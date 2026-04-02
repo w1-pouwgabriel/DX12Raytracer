@@ -78,7 +78,7 @@ ComPtr<IDxcBlob> ShaderCompiler::Compile(
     HRESULT status;
     result->GetStatus(&status);
     if (FAILED(status)) {
-        throw std::runtime_error("[ShaderCompiler] Compilation failed � see errors above");
+        throw std::runtime_error("[ShaderCompiler] Compilation failed see errors above");
     }
 
     // 6. Extract compiled DXIL blob ????????????????????????????????????

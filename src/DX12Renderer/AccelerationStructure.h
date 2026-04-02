@@ -8,6 +8,10 @@
 struct BLAS {
     ComPtr<ID3D12Resource> buffer;      // AS data on the GPU
     D3D12_GPU_VIRTUAL_ADDRESS gpuVA() const { return buffer->GetGPUVirtualAddress(); }
+
+    ComPtr<ID3D12Resource> scratchBuffer;   // ADD THIS - keep alive!
+    ComPtr<ID3D12Resource> vertexBuffer;    // ADD THIS - keep alive!
+    ComPtr<ID3D12Resource> indexBuffer;     // ADD THIS - keep alive!
 };
 
 // One entry in the TLAS — pairs a BLAS with a world transform and an instance ID.
@@ -34,7 +38,9 @@ public:
     static ComPtr<ID3D12Resource> BuildTLAS(
         Device*                           device,
         ID3D12GraphicsCommandList4*       cmdList,
-        const std::vector<TLASInstance>&  instances
+        const std::vector<TLASInstance>&  instances,
+        ComPtr<ID3D12Resource>& outScratch,
+        ComPtr<ID3D12Resource>& outInstanceBuffer
     );
 
     // Helper: identity 3x4 transform (no translation, no rotation, no scale)

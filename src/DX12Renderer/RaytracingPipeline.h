@@ -10,10 +10,10 @@ public:
     void Dispatch(ID3D12GraphicsCommandList4* cmdList);
     void Resize(uint32_t width, uint32_t height);
 
-    // Shader hot-reload — rebuilds RTPSO + SBT only, geometry is untouched
+    // Shader hot-reload rebuilds RTPSO + SBT only, geometry is untouched
     void Reload(const std::string& shaderPath = "assets/shaders/landelare.hlsl");
 
-    // Called by Renderer after BuildScene() — stores the GPU address for Dispatch()
+    // Called by Renderer after BuildScene() stores the GPU address for Dispatch()
     void SetTLAS(D3D12_GPU_VIRTUAL_ADDRESS tlas) { m_tlas = tlas; }
 
     ID3D12Resource* GetOutputUAV() const { return m_outputUAV.Get(); }
