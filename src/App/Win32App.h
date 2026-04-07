@@ -4,6 +4,7 @@
 #include <string>
 #include <functional>
 #include <cstdint>
+#include "Renderer/Renderer.h"
 
 class Win32App {
 public:
@@ -25,18 +26,12 @@ public:
     uint32_t GetHeight() const { return m_height; }
     bool IsRunning() const { return m_running; }
 
-    // Callbacks - set these to handle events
-    std::function<void()> OnInit;          // Called after window creation
-    std::function<void()> OnUpdate;        // Called each frame
-    std::function<void()> OnRender;        // Called each frame after update
-    std::function<void()> OnDestroy;       // Called before window destruction
-    std::function<void(uint32_t, uint32_t)> OnResize;  // Called when window resizes
-    std::function<void(WPARAM)>             OnKeyDown;
-
 private:
     // Window message handler
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
     LRESULT HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam);
+
+    std::unique_ptr<Renderer>         m_renderer;
 
     HWND m_hwnd;
     HINSTANCE m_hInstance;

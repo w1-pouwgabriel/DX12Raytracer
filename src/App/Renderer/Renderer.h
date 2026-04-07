@@ -21,7 +21,7 @@ public:
     void WaitForGPU();
     void Resize(uint32_t width, uint32_t height);
 
-    // Return by reference — returning by value would copy a non-copyable type
+    // Return by reference returning by value would copy a non-copyable type
     RaytracingPipeline& GetPipeline() { return m_pipeline; }
 
     Device& GetDevice() { return m_device; }
@@ -56,7 +56,7 @@ private:
 
     RaytracingPipeline m_pipeline;
 
-    // Scene — owned here, never in RaytracingPipeline --------------------------
+    // Scene owned here, never in RaytracingPipeline --------------------------
     BLAS                    m_cubeBLAS;
     BLAS                    m_mirrorBLAS;
     BLAS                    m_floorBLAS;

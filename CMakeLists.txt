@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Force x64 platform BEFORE project()
+set(CMAKE_GENERATOR_PLATFORM x64)
+
 # Guard against in-source builds
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR
@@ -22,21 +25,24 @@ set(LIB_DIR     ${CMAKE_SOURCE_DIR}/lib)
 include_directories(${SRC_DIR})
 include_directories(${INCLUDE_DIR})
 
-# Organize files by folder with GLOB
+# Organize files by folder - FIXED PATHS!
 file(GLOB APP_SOURCES "${SRC_DIR}/App/*.cpp")
 file(GLOB APP_HEADERS "${SRC_DIR}/App/*.h")
 
-file(GLOB DX12_SOURCES "${SRC_DIR}/DX12Renderer/*.cpp")
-file(GLOB DX12_HEADERS "${SRC_DIR}/DX12Renderer/*.h")
+# Changed from DX12Renderer to Renderer (match your folder structure!)
+file(GLOB RENDERER_SOURCES "${SRC_DIR}/App/Renderer/*.cpp")
+file(GLOB RENDERER_HEADERS "${SRC_DIR}/App/Renderer/*.h")
 
 file(GLOB_RECURSE SHADER_HEADERS "${CMAKE_SOURCE_DIR}/assets/shaders/*.h")
 file(GLOB_RECURSE SHADER_FILES "${CMAKE_SOURCE_DIR}/assets/shaders/*.hlsl")
 
-set(MAIN_SOURCES ${SRC_DIR}/main.cpp)
+set(MAIN_SOURCES 
+    ${SRC_DIR}/main.cpp
+)
 
 # Group files for Visual Studio
 source_group("App" FILES ${APP_SOURCES} ${APP_HEADERS})
-source_group("DX12Renderer" FILES ${DX12_SOURCES} ${DX12_HEADERS})
+source_group("Renderer" FILES ${RENDERER_SOURCES} ${RENDERER_HEADERS})
 source_group("Source Files" FILES ${MAIN_SOURCES})
 source_group("Shaders" FILES ${SHADER_FILES} ${SHADER_HEADERS})
 
@@ -45,26 +51,29 @@ add_executable(Raytracer
     ${MAIN_SOURCES}
     ${APP_SOURCES}
     ${APP_HEADERS}
-    ${DX12_SOURCES}
-    ${DX12_HEADERS}
+    ${RENDERER_SOURCES}
+    ${RENDERER_HEADERS}
     ${SHADER_FILES}
     ${SHADER_HEADERS}
 )
 
+# Mark shaders as content only (don't compile as C++)
 set_source_files_properties(${SHADER_FILES} PROPERTIES VS_TOOL_OVERRIDE "None")
 
+# Set working directory for debugging
 set_target_properties(Raytracer PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:Raytracer>"
 )
 
+# Link libraries
 target_link_libraries(Raytracer
     d3d12
     dxgi
     dxguid
     dxcompiler
-    gdi32
-    user32
-    kernel32
+    kernel32      # Core Windows API
+    user32        # Window management
+    gdi32         # Graphics
 )
 
 # Copy lib/ and assets/
@@ -103,4 +112,3 @@ foreach(DXC_DLL dxcompiler.dll dxil.dll)
             "$<TARGET_FILE_DIR:Raytracer>"
     )
 endforeach()
-

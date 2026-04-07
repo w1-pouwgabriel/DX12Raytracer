@@ -1,5 +1,5 @@
 #include "Win32App.h"
-#include "../DX12Renderer/RaytracingPipeline.h"
+#include "Renderer/RaytracingPipeline.h"
 #include <iostream>
 
 Win32App::Win32App(const std::string& title, uint32_t width, uint32_t height)
@@ -12,13 +12,15 @@ Win32App::Win32App(const std::string& title, uint32_t width, uint32_t height)
 {
 }
 
-Win32App::~Win32App() {
+Win32App::~Win32App() 
+{
     if (m_hwnd) {
         DestroyWindow(m_hwnd);
     }
 }
 
-bool Win32App::Create() {
+bool Win32App::Create() 
+{
     // Register window class
     WNDCLASSEX wc = {};
     wc.cbSize = sizeof(WNDCLASSEX);
@@ -67,52 +69,27 @@ bool Win32App::Create() {
 
     m_running = true;
 
-    // Call OnInit callback if set
-    if (OnInit) {
-        OnInit();
-    }
-
     return true;
 }
 
-int Win32App::Run() {
-    MSG msg = {};
+int Win32App::Run() 
+{
+    if (!Create()) return -1;
 
-    while (m_running) {
-        // Process all pending messages
-        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT) {
-                m_running = false;
-                break;
-            }
+    m_renderer = std::make_unique<Renderer>();
 
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
+    if (!m_renderer->Initialize(m_hwnd, m_width, m_height, true)) return -1;
 
-        if (!m_running) {
-            break;
-        }
-
-        // Update and render
-        if (OnUpdate) {
-            OnUpdate();
-        }
-
-        if (OnRender) {
-            OnRender();
-        }
+    while (ProcessMessages()) {
+        m_renderer->Render();
     }
 
-    // Call OnDestroy callback if set
-    if (OnDestroy) {
-        OnDestroy();
-    }
-
-    return static_cast<int>(msg.wParam);
+    m_renderer->WaitForGPU();
+    return 0;
 }
 
-bool Win32App::ProcessMessages() {
+bool Win32App::ProcessMessages() 
+{
     MSG msg = {};
 
     // Process all pending messages
@@ -129,7 +106,8 @@ bool Win32App::ProcessMessages() {
     return m_running;
 }
 
-LRESULT CALLBACK Win32App::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+LRESULT CALLBACK Win32App::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) 
+{
     Win32App* app = nullptr;
 
     if (msg == WM_CREATE) {
@@ -150,15 +128,16 @@ LRESULT CALLBACK Win32App::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM
     return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
-LRESULT Win32App::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
+LRESULT Win32App::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam)
+{
     switch (msg) {
         // Triggers when: User resizes window, maximize/minimize
         case WM_SIZE: {
             m_width = LOWORD(lparam);
             m_height = HIWORD(lparam);
 
-            if (OnResize && m_width > 0 && m_height > 0) {
-                OnResize(m_width, m_height);
+            if (m_renderer && m_width > 0 && m_height > 0) {
+                m_renderer->Resize(m_width, m_height);
             }
             
             return 0;
@@ -172,7 +151,6 @@ LRESULT Win32App::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
                 return 0;
             }
             if (wparam == VK_ESCAPE) { PostQuitMessage(0); return 0; }
-            if (OnKeyDown) OnKeyDown(wparam);
             break;
 
             break;

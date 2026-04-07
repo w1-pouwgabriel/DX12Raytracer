@@ -48,14 +48,6 @@ bool RaytracingPipeline::Initialize(Device* device, uint32_t width, uint32_t hei
         std::cerr << "[RaytracingPipeline] Failed to create RTPSO\n";
         return false;
     }
-    /*
-    
-    Manually listed export "raygeneration", doesn't exist in DXILLibrary.pShaderBytecode: 0x00000231D4BE3410. [ STATE_CREATION ERROR #1194: CREATE_STATE_OBJECT_ERROR]
-    Manually listed export "closesthit", doesn't exist in DXILLibrary.pShaderBytecode: 0x00000231D4BE3410. [ STATE_CREATION ERROR #1194: CREATE_STATE_OBJECT_ERROR]
-    Manually listed export "miss", doesn't exist in DXILLibrary.pShaderBytecode: 0x00000231D4BE3410. [ STATE_CREATION ERROR #1194: CREATE_STATE_OBJECT_ERROR]
-    HitGroupExport "raygeneration" imports ClosestHitShaderImport named "closesthit" but there are no exports matching that name. [ STATE_CREATION ERROR #1194: CREATE_STATE_OBJECT_ERROR]
-    
-    */
 
     if (!CreateSBT()) {
         std::cerr << "[RaytracingPipeline] Failed to create SBT\n";
