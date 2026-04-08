@@ -7,7 +7,7 @@ struct Payload
 };
 
 [shader("raygeneration")]
-void RayGen()
+void RayGeneration()
 {
     uint2 idx = DispatchRaysIndex().xy;
     float2 dims = float2(DispatchRaysDimensions().xy);

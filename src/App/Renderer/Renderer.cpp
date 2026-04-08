@@ -14,7 +14,7 @@ Renderer::~Renderer()
 	CleanupRenderTargets();
 }
 
-bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enableDebugLayer)
+bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enableDebugLayer, const std::string& fileName)
 {
 	m_width = width;
 	m_height = height;
@@ -60,7 +60,7 @@ bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enabl
 	}
 	m_commandList->Close();
 
-	if (!m_pipeline.Initialize(&m_device, width, height))
+	if (!m_pipeline.Initialize(&m_device, width, height, fileName))
 	{
 		std::cerr << "[Renderer] Failed to initialize raytracing pipeline\n";
 		return false;
@@ -103,7 +103,7 @@ void Renderer::CopyUAVToBackBuffer(ID3D12Resource* uavOutput)
 {
 	uint32_t backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 
-	// Transition back buffer: PRESENT b COPY_DEST
+	// Transition back buffer: PRESENT to COPY_DEST
 	D3D12_RESOURCE_BARRIER barriers[2] =
 	    {};
 	barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -124,42 +124,14 @@ void Renderer::CopyUAVToBackBuffer(ID3D12Resource* uavOutput)
 	m_commandList->ResourceBarrier(1, &barriers[0]);
 }
 
-bool Renderer::BuildScene()
-{
-	// Reuse the existing command allocator/list
-	m_commandAllocator->Reset();
-	m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+bool Renderer::BuildScene() {
+    // Simple! Scene handles everything
+    if (!m_scene.Build(&m_device, m_commandList.Get())) {
+        return false;
+    }
 
-    static const std::vector<float> cubeVerts = {
-        -0.5f,-0.5f,-0.5f,  0.5f,-0.5f,-0.5f,  0.5f, 0.5f,-0.5f, -0.5f, 0.5f,-0.5f,
-        -0.5f,-0.5f, 0.5f,  0.5f,-0.5f, 0.5f,  0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
-    };
-    static const std::vector<uint32_t> cubeIdx = {
-        0,1,2, 0,2,3,  5,4,7, 5,7,6,
-        4,0,3, 4,3,7,  1,5,6, 1,6,2,
-        4,5,1, 4,1,0,  3,2,6, 3,6,7,
-    };
-    static const std::vector<float>    quadVerts = { -1,0,-1, 1,0,-1, 1,0,1, -1,0,1 };
-    static const std::vector<uint32_t> quadIdx = { 0,1,2, 0,2,3 };
-
-    // Build BLASes and TLAS, upload to GPU
-    m_cubeBLAS = AccelerationStructure::BuildBLAS(&m_device, m_commandList.Get(), cubeVerts, cubeIdx);
-    m_mirrorBLAS = AccelerationStructure::BuildBLAS(&m_device, m_commandList.Get(), quadVerts, quadIdx);
-    m_floorBLAS = AccelerationStructure::BuildBLAS(&m_device, m_commandList.Get(), quadVerts, quadIdx);
-
-    std::vector<TLASInstance> instances = {
-        { &m_cubeBLAS,   AccelerationStructure::Translation(0, 1, 0), 0 },
-        { &m_mirrorBLAS, AccelerationStructure::Translation(0, 3, 2), 1 },
-        { &m_floorBLAS,  AccelerationStructure::Scale(20),            2 },
-    };
-    m_tlas = AccelerationStructure::BuildTLAS(&m_device, m_commandList.Get(), instances, m_tlasScratch, m_tlasInstanceBuffer);  // Pass out buffers
-
-    m_commandList->Close();
-    ID3D12CommandList* lists[] = { m_commandList.Get() };
-    m_device.GetCommandQueue()->ExecuteCommandLists(1, lists);
-    m_device.WaitForGPU(); // scratch buffers safe to free after this
-
-    m_pipeline.SetTLAS(m_tlas->GetGPUVirtualAddress());
+    // Pass TLAS to pipeline
+    m_pipeline.SetTLAS(m_scene.GetTLASAddress());
     return true;
 }
 

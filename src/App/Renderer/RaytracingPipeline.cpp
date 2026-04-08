@@ -15,7 +15,7 @@ static std::string ResolveShaderPath(const std::string& path) {
     return (std::filesystem::path(exePath).parent_path() / path).string();
 }
 
-bool RaytracingPipeline::Initialize(Device* device, uint32_t width, uint32_t height) {
+bool RaytracingPipeline::Initialize(Device* device, uint32_t width, uint32_t height, const std::string& fileName) {
     m_device = device;
     m_width = width;
     m_height = height;
@@ -28,7 +28,7 @@ bool RaytracingPipeline::Initialize(Device* device, uint32_t width, uint32_t hei
     ShaderCompiler compiler;
     if (!compiler.Initialize()) return false;
 
-    std::string resolved = ResolveShaderPath("assets/shaders/screenShader.hlsl");
+    std::string resolved = ResolveShaderPath(fileName);
     std::ifstream file(resolved);
     if (!file.is_open()) {
         std::cerr << "[RaytracingPipeline] Cannot open: " << resolved << "\n"
@@ -234,9 +234,9 @@ bool RaytracingPipeline::CreateRTPSO(const void* shaderCode, size_t shaderSize) 
     // Export all three shader entry points from the DXIL library.
     // Names must exactly match the [shader("...")] functions in the HLSL.
     D3D12_EXPORT_DESC exports[3] = {
-        { L"RayGen", nullptr, D3D12_EXPORT_FLAG_NONE },
-        { L"Miss", nullptr, D3D12_EXPORT_FLAG_NONE },
-        { L"ClosestHit", nullptr, D3D12_EXPORT_FLAG_NONE },
+        { L"RayGeneration", nullptr, D3D12_EXPORT_FLAG_NONE },  // Match function name!
+        { L"Miss", nullptr, D3D12_EXPORT_FLAG_NONE },           // Match function name!
+        { L"ClosestHit", nullptr, D3D12_EXPORT_FLAG_NONE },     // Match function name!
     };
 
     D3D12_DXIL_LIBRARY_DESC libDesc = {};
@@ -263,11 +263,11 @@ bool RaytracingPipeline::CreateRTPSO(const void* shaderCode, size_t shaderSize) 
     globalRootSig.pGlobalRootSignature = m_globalRootSig.Get();
 
     D3D12_STATE_SUBOBJECT subobjects[5] = {
-        { D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,               &libDesc        },
-        { D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,                   &hitGroup       },
-        { D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG,    &shaderConfig   },
-        { D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG,  &pipelineConfig },
-        { D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE,       &globalRootSig  },
+        { D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &libDesc },
+        { D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &hitGroup },
+        { D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG,&shaderConfig },
+        { D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG,&pipelineConfig },
+        { D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &globalRootSig },
     };
 
     D3D12_STATE_OBJECT_DESC stateObjDesc = {};
@@ -310,7 +310,7 @@ bool RaytracingPipeline::CreateSBT() {
         IID_PPV_ARGS(&m_sbtBuffer)))) return false;
 
     // Names must match HLSL entry points / hit group export name exactly
-    void* rayGenId = m_rtpsoProps->GetShaderIdentifier(L"RayGen");
+    void* rayGenId = m_rtpsoProps->GetShaderIdentifier(L"RayGeneration");
     void* missId = m_rtpsoProps->GetShaderIdentifier(L"Miss");
     void* hitGroupId = m_rtpsoProps->GetShaderIdentifier(L"HitGroup");
 

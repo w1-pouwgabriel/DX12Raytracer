@@ -1,11 +1,13 @@
 #pragma once
 
-#include "Device.h"
-#include "RaytracingPipeline.h"
-#include "AccelerationStructure.h"
 #include <dxgi1_6.h>
 #include <cstdint>
 #include <vector>
+
+#include "Device.h"
+#include "RaytracingPipeline.h"
+#include "AccelerationStructure.h"
+#include "Scene.h"
 
 class Renderer {
 public:
@@ -15,7 +17,13 @@ public:
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
 
-    bool Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enableDebugLayer = true);
+    bool Initialize(
+        HWND hwnd, 
+        uint32_t width, 
+        uint32_t height, 
+        bool enableDebugLayer = true, 
+        const std::string& fileName = "assets/shaders/RayShader.hlsl"
+    );
 
     void Render();
     void WaitForGPU();
@@ -37,8 +45,6 @@ private:
     void CleanupRenderTargets();
     void CopyUAVToBackBuffer(ID3D12Resource* uavOutput);
 
-    // Builds all BLASes + TLAS and calls m_pipeline.SetTLAS()
-    // Called once from Initialize(), after the pipeline is ready
     bool BuildScene();
 
     // -- Core infrastructure ---------------------------------------------------
@@ -53,17 +59,9 @@ private:
     static const uint32_t        BACK_BUFFER_COUNT = 2;
     ComPtr<ID3D12Resource>       m_renderTargets[BACK_BUFFER_COUNT];
 
-
+    // -- Stuff -----------------------------------------------------------
     RaytracingPipeline m_pipeline;
-
-    // Scene owned here, never in RaytracingPipeline --------------------------
-    BLAS                    m_cubeBLAS;
-    BLAS                    m_mirrorBLAS;
-    BLAS                    m_floorBLAS;
-    ComPtr<ID3D12Resource>  m_tlas;         // keep alive - GPU reads it every frame
-    // keep TLAS build buffers alive
-    ComPtr<ID3D12Resource> m_tlasScratch;
-    ComPtr<ID3D12Resource> m_tlasInstanceBuffer;
+    Scene              m_scene;
 
     // State 
     uint32_t m_width = 0;

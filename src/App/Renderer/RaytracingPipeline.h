@@ -6,7 +6,7 @@
 
 class RaytracingPipeline {
 public:
-    bool Initialize(Device* device, uint32_t width, uint32_t height);
+    bool Initialize(Device* device, uint32_t width, uint32_t height, const std::string& fileName);
     void Dispatch(ID3D12GraphicsCommandList4* cmdList);
     void Resize(uint32_t width, uint32_t height);
 
