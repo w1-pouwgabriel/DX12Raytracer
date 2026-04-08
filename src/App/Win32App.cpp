@@ -37,6 +37,17 @@ bool Win32App::Create()
         return false;
     }
 
+    // Create menu bar
+    m_menu = CreateMenu();
+    HMENU resolutionMenu = CreateMenu();
+    
+    AppendMenu(resolutionMenu, MF_STRING, ID_RESOLUTION_720P, "1280x720 (720p)");
+    AppendMenu(resolutionMenu, MF_STRING, ID_RESOLUTION_1080P, "1920x1080 (1080p)");
+    AppendMenu(resolutionMenu, MF_STRING, ID_RESOLUTION_1440P, "2560x1440 (1440p)");
+    AppendMenu(resolutionMenu, MF_STRING, ID_RESOLUTION_4K, "3840x2160 (4K)");
+    
+    AppendMenu(m_menu, MF_POPUP, (UINT_PTR)resolutionMenu, "Resolution");
+
     // Calculate window size including borders
     RECT rect = { 0, 0, static_cast<LONG>(m_width), static_cast<LONG>(m_height) };
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
@@ -53,7 +64,7 @@ bool Win32App::Create()
         CW_USEDEFAULT, CW_USEDEFAULT,
         windowWidth, windowHeight,
         nullptr,
-        nullptr,
+        m_menu,
         m_hInstance,
         this  // Pass 'this' pointer to WM_CREATE
     );
@@ -80,7 +91,10 @@ int Win32App::Run()
 
     if (!m_renderer->Initialize(m_hwnd, m_width, m_height, true)) return -1;
 
-    while (ProcessMessages()) {
+    // Main render loop
+    while (ProcessMessages()) 
+    {
+
         m_renderer->Render();
     }
 
@@ -104,6 +118,20 @@ bool Win32App::ProcessMessages()
     }
 
     return m_running;
+}
+
+void Win32App::ResizeWindow(uint32_t width, uint32_t height) {
+
+    RECT rect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
+    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);  // TRUE = has menu
+    
+    SetWindowPos(m_hwnd, nullptr, 0, 0, 
+                 rect.right - rect.left, 
+                 rect.bottom - rect.top,
+                 SWP_NOMOVE | SWP_NOZORDER);
+    
+    std::cout << "[Win32App] Resized to " << width << "x" << height << "\n";
+    m_renderer->Resize(width, height);
 }
 
 LRESULT CALLBACK Win32App::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) 
@@ -131,7 +159,23 @@ LRESULT CALLBACK Win32App::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM
 LRESULT Win32App::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam)
 {
     switch (msg) {
-        // Triggers when: User resizes window, maximize/minimize
+        case WM_COMMAND: {
+            switch (LOWORD(wparam)) {
+                case ID_RESOLUTION_720P:
+                    ResizeWindow(1280, 720);
+                    break;
+                case ID_RESOLUTION_1080P:
+                    ResizeWindow(1920, 1080);
+                    break;
+                case ID_RESOLUTION_1440P:
+                    ResizeWindow(2560, 1440);
+                    break;
+                case ID_RESOLUTION_4K:
+                    ResizeWindow(3840, 2160);
+                    break;
+            }
+            return 0;
+        }
         case WM_SIZE: {
             m_width = LOWORD(lparam);
             m_height = HIWORD(lparam);
@@ -142,26 +186,34 @@ LRESULT Win32App::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam)
             
             return 0;
         }
-
-        // Triggers when: User presses a key
         case WM_KEYDOWN: {
-            // ESC key closes window
-            if (wparam == VK_ESCAPE) {
-                PostQuitMessage(0);
-                return 0;
+            switch (wparam) {
+                case VK_ESCAPE:
+                    PostQuitMessage(0);
+                    break;
+                case '1':
+                    //ResizeWindow(1280, 720);
+                    break;
+                case '2':
+                    //ResizeWindow(1920, 1080);
+                    break;
+                case '3':
+                    //ResizeWindow(2560, 1440);
+                    break;
+                case '4':  
+                   //ResizeWindow(3840, 2160);
+                    break;
             }
-            if (wparam == VK_ESCAPE) { PostQuitMessage(0); return 0; }
-            break;
-
-            break;
+            if (m_renderer) {
+                m_renderer->GetCamera().OnKeyDown(static_cast<uint32_t>(wparam));
+            }
+        break;
         }
-
         // Triggers when: User clicks X, Alt+F4, window destroyed
         case WM_DESTROY: {
             PostQuitMessage(0);
             return 0;
         }
-
         // Triggers when: Window exposed, minimized/restored
         case WM_PAINT: {
             ValidateRect(m_hwnd, nullptr);

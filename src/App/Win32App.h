@@ -19,6 +19,7 @@ public:
     bool Create();
     int  Run();
     bool ProcessMessages();
+    void ResizeWindow(uint32_t width, uint32_t height);
 
     // Getters
     HWND GetHWND() const { return m_hwnd; }
@@ -38,5 +39,14 @@ private:
     std::string m_title;
     uint32_t m_width;
     uint32_t m_height;
+
+    // Flag to control the main loop
     bool m_running;
+
+    HMENU m_menu;
+    // Menu item IDs
+    static const int ID_RESOLUTION_720P = 1001;
+    static const int ID_RESOLUTION_1080P = 1002;
+    static const int ID_RESOLUTION_1440P = 1003;
+    static const int ID_RESOLUTION_4K = 1004;
 };

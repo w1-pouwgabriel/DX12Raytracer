@@ -5,7 +5,7 @@
 
 
 bool Scene::Build(Device* device, ID3D12GraphicsCommandList4* cmdList) {
-    // Define geometry (hardcoded for now)
+    
     static const std::vector<float> cubeVerts = {
         -0.5f,-0.5f,-0.5f,  0.5f,-0.5f,-0.5f,  0.5f, 0.5f,-0.5f, -0.5f, 0.5f,-0.5f,
         -0.5f,-0.5f, 0.5f,  0.5f,-0.5f, 0.5f,  0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,

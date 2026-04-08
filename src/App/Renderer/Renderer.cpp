@@ -72,6 +72,7 @@ bool Renderer::Initialize(HWND hwnd, uint32_t width, uint32_t height, bool enabl
 		std::cerr << "[Renderer] Failed to build scene\n";
 		return false;
 	}
+	m_pipeline.SetTLAS(m_scene.GetTLASAddress());
 
 	std::cout << "[Renderer] Initialized\n";
 	return true;
@@ -125,13 +126,29 @@ void Renderer::CopyUAVToBackBuffer(ID3D12Resource* uavOutput)
 }
 
 bool Renderer::BuildScene() {
-    // Simple! Scene handles everything
+    m_commandAllocator->Reset();
+    m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+    
     if (!m_scene.Build(&m_device, m_commandList.Get())) {
         return false;
     }
 
-    // Pass TLAS to pipeline
-    m_pipeline.SetTLAS(m_scene.GetTLASAddress());
+    // Execute and wait (IMPORTANT!)
+    m_commandList->Close();
+    ID3D12CommandList* lists[] = { m_commandList.Get() };
+    m_device.GetCommandQueue()->ExecuteCommandLists(1, lists);
+    m_device.WaitForGPU();  // Wait for BLAS/TLAS to finish building!
+
+    // Check TLAS address
+    D3D12_GPU_VIRTUAL_ADDRESS tlasAddr = m_scene.GetTLASAddress();
+    std::cout << "[Renderer] TLAS address: 0x" << std::hex << tlasAddr << std::dec << "\n";
+    
+    if (tlasAddr == 0) {
+        std::cerr << "[Renderer] ERROR: TLAS address is NULL!\n";
+        return false;
+    }
+
+    m_pipeline.SetTLAS(tlasAddr);
     return true;
 }
 

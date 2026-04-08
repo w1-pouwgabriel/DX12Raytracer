@@ -58,7 +58,7 @@ bool RaytracingPipeline::Initialize(Device* device, uint32_t width, uint32_t hei
     return true;
 }
 
-void RaytracingPipeline::Reload(const std::string& shaderPath) {
+void RaytracingPipeline::ReloadShader(const std::string& shaderPath) {
     std::cout << "[RaytracingPipeline] Reloading: " << shaderPath << "\n";
     m_device->WaitForGPU();
 

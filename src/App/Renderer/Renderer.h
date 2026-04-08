@@ -8,6 +8,7 @@
 #include "RaytracingPipeline.h"
 #include "AccelerationStructure.h"
 #include "Scene.h"
+#include "Camera.h"
 
 class Renderer {
 public:
@@ -33,10 +34,10 @@ public:
     RaytracingPipeline& GetPipeline() { return m_pipeline; }
 
     Device& GetDevice() { return m_device; }
-    ID3D12Device5* GetD3D12Device()    const { return m_device.GetDevice(); }
-    ID3D12CommandQueue* GetCommandQueue()   const { return m_device.GetCommandQueue(); }
-    IDXGISwapChain3* GetSwapChain()      const { return m_swapChain.Get(); }
-    uint32_t            GetCurrentBackBufferIndex() const;
+    ID3D12Device5* GetD3D12Device() const { return m_device.GetDevice(); }
+    ID3D12CommandQueue* GetCommandQueue() const { return m_device.GetCommandQueue(); }
+    IDXGISwapChain3* GetSwapChain() const { return m_swapChain.Get(); }
+    uint32_t GetCurrentBackBufferIndex() const;
 
 private:
     bool CreateSwapChain(HWND hwnd, uint32_t width, uint32_t height);
@@ -53,15 +54,18 @@ private:
     ComPtr<ID3D12GraphicsCommandList4>  m_commandList;
 
     // -- Presentation ----------------------------------------------------------
-    ComPtr<IDXGISwapChain3>      m_swapChain;
-    ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
-    uint32_t                     m_rtvDescriptorSize = 0;
-    static const uint32_t        BACK_BUFFER_COUNT = 2;
-    ComPtr<ID3D12Resource>       m_renderTargets[BACK_BUFFER_COUNT];
+    ComPtr<IDXGISwapChain3>             m_swapChain;
+    ComPtr<ID3D12DescriptorHeap>        m_rtvHeap;
+    uint32_t                            m_rtvDescriptorSize = 0;
+    static const uint32_t               BACK_BUFFER_COUNT = 2;
+    ComPtr<ID3D12Resource>              m_renderTargets[BACK_BUFFER_COUNT];
+    RaytracingPipeline m_pipeline;
 
     // -- Stuff -----------------------------------------------------------
-    RaytracingPipeline m_pipeline;
     Scene              m_scene;
+    Camera             m_camera;
+
+    ComPtr<ID3D12Resource> m_cameraBuffer;
 
     // State 
     uint32_t m_width = 0;
