@@ -1,6 +1,7 @@
 #include "Win32App.h"
 #include "Renderer/RaytracingPipeline.h"
 #include <iostream>
+#include "Renderer/Camera.h"
 
 Win32App::Win32App(const std::string& title, uint32_t width, uint32_t height)
     : m_hwnd(nullptr)
@@ -190,18 +191,6 @@ LRESULT Win32App::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam)
             switch (wparam) {
                 case VK_ESCAPE:
                     PostQuitMessage(0);
-                    break;
-                case '1':
-                    //ResizeWindow(1280, 720);
-                    break;
-                case '2':
-                    //ResizeWindow(1920, 1080);
-                    break;
-                case '3':
-                    //ResizeWindow(2560, 1440);
-                    break;
-                case '4':  
-                   //ResizeWindow(3840, 2160);
                     break;
             }
             if (m_renderer) {

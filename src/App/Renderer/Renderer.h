@@ -32,7 +32,7 @@ public:
 
     // Return by reference returning by value would copy a non-copyable type
     RaytracingPipeline& GetPipeline() { return m_pipeline; }
-
+    Camera& GetCamera() { return m_camera; }
     Device& GetDevice() { return m_device; }
     ID3D12Device5* GetD3D12Device() const { return m_device.GetDevice(); }
     ID3D12CommandQueue* GetCommandQueue() const { return m_device.GetCommandQueue(); }

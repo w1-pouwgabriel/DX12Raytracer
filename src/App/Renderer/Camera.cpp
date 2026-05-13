@@ -1,4 +1,6 @@
+#include <windows.h>
 #include "Camera.h"
+#include <dxcapi.h>
 #include <algorithm>
 #include <cmath>
 
